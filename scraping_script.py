@@ -1,6 +1,8 @@
-# Script that will scrape the requirements of the jobs offered by some of the most
+# Script that will scrape the descriptions of the jobs offered by some of the most
 # important companies in the IT sector
 # The name of those companies will be stored in a list, on 'constants.py'
+
+# This script only takes care of scraping the descriptions and saving all the descriptions into a
 # In order to scrape it I will combine unigrams (word counts) and n-grams, particularly bigrams (n=2)
 
 # Actions chains are a way to automate low level interactions such as
@@ -8,6 +10,7 @@
 
 
 import csv
+import pickle
 import sys
 import time
 
@@ -33,6 +36,7 @@ class Linkedin(webdriver.Chrome):
 
     def __init__(self, companies):
         options = webdriver.ChromeOptions()
+        options.add_argument("--force-device-scale-factor=0.2")
         options.add_experimental_option("detach", True)
         options.add_argument("--disable-search-engine-choice-screen")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
@@ -44,7 +48,8 @@ class Linkedin(webdriver.Chrome):
         self.enterprise_job = ""
         self.title_job = ""
         self.description_job = ""
-        self.companies = []
+        self.companies = companies
+        self.progress_companies = 0
         self.number_jobs = 0
 
     def get_data(self):
@@ -52,35 +57,36 @@ class Linkedin(webdriver.Chrome):
         self.__sign_in()
         self.__search_title()
         self.__search_location()
-        words = {}
+        # Loop over companies that I pass as an argument when instantiating the class
         for company in self.companies:
+            # Print progress
+            print(
+                f"##### {round(self.progress_companies/len(self.companies)*100)}% completed #####"
+            )
+
             self.__search_company(company)
-            for job in self.number_jobs:
+            # self.__load_whole_page()
+            # Find all jobs in first page for given company
+            jobs = self.__get_company_jobs()
+            self.number_jobs = len(jobs)
+            # Loop over all the jobs that a company has on the first page
+            for i, job in enumerate(jobs, 1):
+                print(f"\t{i}/{self.number_jobs} jobs scraped")
+                # Select job
+                self.__select_job(job)
                 # Get info about the job
                 self.__extract_info_job()
                 clean_description_job = self.__process_description_job()
-                job_words = Linkedin.count_words(clean_description_job)
-                Linkedin.sum_dicts(words, job_words)
 
-        sorted_words_by_ocurrence = dict(
-            sorted(words.items(), key=lambda item: item[1], reverse=True)
-        )
-        noun_counts = {
-            word: count
-            for word, count in sorted_words_by_ocurrence.items()
-            if BSC.is_noun(word)
-        }
-        noun_counts = dict(
-            sorted(noun_counts.items(), key=lambda item: item[1], reverse=True)
-        )
-
-        with open("Linkedin.csv", "w", newline="") as csvfile:
-            writer = csv.writer(csvfile)
-
-            writer.writerow(["word", "count"])
-
-            for word, count in noun_counts.items():
-                writer.writerow([word, count])
+                # Append job description into a txt
+                with open("description_jobs.txt", "a", encoding="utf-8") as f:
+                    f.write(clean_description_job + "\n")
+                time.sleep(2)
+            self.number_jobs = 0
+            self.progress_companies += 1
+            time.sleep(2)
+            # Reset company filter, so we get a clean slate for next company
+            self.__reset()
 
         return None
 
@@ -134,7 +140,11 @@ class Linkedin(webdriver.Chrome):
         )
         location_input.clear()
         location_input.send_keys(const.LOCATION)
-        location_input.send_keys(Keys.ESCAPE)
+        search_btn = self.find_element(
+            By.XPATH,
+            "//div[@id='global-nav-search']//button[contains(@class,'jobs-search-box__submit-button')]",
+        )
+        search_btn.click()
 
     def __search_company(self, company):
         time.sleep(2)
@@ -182,8 +192,6 @@ class Linkedin(webdriver.Chrome):
             "//div[@id='global-nav-search']//button[contains(@class,'jobs-search-box__submit-button')]",
         )
         search_update_worldwide_btn.click()
-
-    def __extract_info_job(self):
         # At first it returned me the info of random jobs, because it needs some time
         # to load all the jobs of the company of interest
         WebDriverWait(self, 30).until(
@@ -196,27 +204,34 @@ class Linkedin(webdriver.Chrome):
             )
         )
 
-        enterprise_job = self.find_element(
+    def __get_company_jobs(self):
+        jobs = self.find_elements(
             By.XPATH,
-            "//div[contains(@class,'job-details-jobs-unified-top-card__company-name')]/a",
-        ).text
-        title_job = self.find_element(
-            By.XPATH,
-            "//div[contains(@class,'job-details-jobs-unified-top-card__job-title')]//h1/a",
-        ).text
+            "//main[@id='main']//div[@class='scaffold-layout__list ']//ul[li/div/div[@data-job-id]]/li",
+        )
+        return jobs
+
+    def __extract_info_job(self):
         description_job = self.find_element(
             By.XPATH,
             "//div[@id='job-details']",
         )
         description_job = description_job.get_attribute("outerHTML")
 
-        self.enterprise_job = enterprise_job
-        self.title_job = title_job
         self.description_job = description_job
+
+    def __select_job(self, job):
+        job.click()
 
     def __process_description_job(self):
         clean_description = self.strip_html_tags(self.description_job)
         return clean_description
+
+    def __reset(self):
+        reset_btn = self.find_element(
+            By.XPATH, "//button[@aria-label='Reset applied filters']"
+        )
+        reset_btn.click()
 
     # Method to remove the html tags from the jobs description
     @staticmethod
@@ -226,63 +241,6 @@ class Linkedin(webdriver.Chrome):
         double_spaces = regex.compile(r"\s+")
         clean = regex.sub(double_spaces, " ", partially_clean)
         return clean
-
-    # In order to count the words, I saw I could have used regex to split the words into a list,
-    # And collection.Counter to count the words in the list
-    # But I felt like doing it from scratch, just to play a little bit with the logic (loops, conditionals...)
-    @staticmethod
-    def count_words(text):
-        # 1. Split the text into words
-        allowed_symbols = ["_", "-", "+", "/"]
-        # List that will hold all words
-        words = []
-        # Variable that will hold a word
-        word = ""
-        for char in text:
-            if char.isalnum() or char in allowed_symbols:
-                word += char.lower()
-            else:
-                if word != "":
-                    words.append(word)
-                    word = ""
-        # 2. Handle last word
-        if word != "":
-            words.append(word)
-
-        # Count ocurrences
-        word_count = {}
-        for w in words:
-            if w in word_count:
-                word_count[w] += 1
-            else:
-                word_count[w] = 1
-        return word_count
-
-    @staticmethod
-    def sum_dicts(d1, d2):
-        result = {}
-
-        # Add all items from d1
-        for key in d1:
-            result[key] = d1[key]
-
-        # Add items from d2
-        for key in d2:
-            if key in result:
-                result[key] += d2[key]
-            else:
-                result[key] = d2[key]
-
-        return result
-
-    @staticmethod
-    # Check if a word is a noun
-    def is_noun(word):
-        doc = nlp(word)
-        for token in doc:
-            if token.pos_ in ("NOUN", "PROPN"):
-                return True
-            return False
 
 
 item = Linkedin(const.ENTERPRISES)
