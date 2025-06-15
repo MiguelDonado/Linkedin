@@ -1,4 +1,19 @@
 # SCRAPING JOBS SKILLS LINKEDIN
+<!-- TOC --> 
+- [SCRAPING JOBS SKILLS LINKEDIN](#scraping-jobs-skills-linkedin)
+    - [1. Motivation of this project](#1-motivation-of-this-project)
+    - [2. Arguments used on Linkedin search](#2-arguments-used-on-linkedin-search)
+      - [2.1 Location](#21-location)
+      - [2.2. Title](#22-title)
+      - [2.3 Companies considered for scraping their job descriptions](#23-companies-considered-for-scraping-their-job-descriptions)
+    - [3. Implementation](#3-implementation)
+    - [4. Explanation of new things](#4-explanation-of-new-things)
+    - [5. Considerations](#5-considerations)
+    - [6. Gotchas](#6-gotchas)
+    - [7. Conclusions](#7-conclusions)
+    - [8. Usage](#8-usage)
+    - [9. Video](#9-video)
+ <!-- /TOC -->
 ### 1. Motivation of this project
 + Nowadays, June of 2025, **Linkedin is the most popular job platform**. Most companies publish their job offers on Linkedin, as well as in their own companies specific portals, and some other portals as well. 
 + After finishing the first year of the master I am currently doing (2025), and with the summer around the corner I am reorganizing my study routine.
@@ -123,7 +138,9 @@ TITLE = "Machine Learning"
 LOCATION = "United States"
 ```
 + On date June of 2025, the **most relevant skills according my Linkedin search** are (unigrams and bigrams):
+
 ![Unigrams](output/unigramshighlightedoutput.png)
+
 ![Bigrams](output/bigramshighlightedoutput.png)
 
 Among all this things I can differentiate between:
