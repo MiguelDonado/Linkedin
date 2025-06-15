@@ -130,5 +130,5 @@ Among all this things I can differentiate between:
 
 ### Video
 + Small video showing the correct execution of the project, particularly of the `scraping_script.py`
-https://github.com/user-attachments/assets/9c622ea2-34d3-4b56-82a4-e88b4b1b134b
+![Demonstration](https://github.com/user-attachments/assets/9c622ea2-34d3-4b56-82a4-e88b4b1b134b)
 
