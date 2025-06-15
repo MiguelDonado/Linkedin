@@ -14,6 +14,7 @@ ENTERPRISES = [
     "Palantir Technologies",
     "Databricks",
     "Tesla",
+    "Abbott",
 ]
 TITLE = "Machine Learning"
-LOCATION = "Worldwide"
+LOCATION = "United States"

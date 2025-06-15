@@ -4,7 +4,7 @@
 
 # This script basically process the descriptions of the jobs that have been saved on a .txt
 # Particularly to process the data (sequences of text), first we have to tokenize it,
-# in order to tokenize it we can consider words as tokens (unigrams), that's what we are gonna apply on this script
+# in order to tokenize it we can consider n-grams, particularly (bigrams), that's what we are gonna apply on this script
 # When tokenizing a sequence of text, we could also consider characters as tokens or n-grams as tokens.
 # All this info about the jobs has been scraped and saved on the file by another script
 
@@ -20,32 +20,37 @@ nlp = spacy.load("en_core_web_sm")
 
 def main():
     # Load txt data
-    words = {}
+    bigrams = {}
 
     # Load jobs line by line and update dictionary at fly
     with open("description_jobs.txt", "r") as file:
         for line in file:
-            job_words = count_words(line)
-            words = sum_dicts(words, job_words)
-    noun_counts = {word: count for word, count in words.items() if is_noun(word)}
-    noun_counts = dict(
-        sorted(noun_counts.items(), key=lambda item: item[1], reverse=True)
-    )
+            words = find_words(line)
+
+            for i in range(len(words) - 1):
+                pair = (words[i], words[i + 1])
+                if pair in bigrams:
+                    bigrams[pair] += 1
+                else:
+                    bigrams[pair] = 1
+        bigrams_sorted = dict(
+            sorted(bigrams.items(), key=lambda item: item[1], reverse=True)
+        )
 
     # Write into csv the word count
-    with open("Linkedin_unigrams.csv", "a", newline="") as csvfile:
+    with open("Linkedin_bigrams.csv", "a", newline="") as csvfile:
         writer = csv.writer(csvfile)
 
         writer.writerow(["word", "count"])
 
-        for word, count in noun_counts.items():
+        for word, count in bigrams_sorted.items():
             writer.writerow([word, count])
 
 
 # In order to count the words, I saw I could have used regex to split the words into a list,
 # And collection.Counter to count the words in the list
 # But I felt like doing it from scratch, just to play a little bit with the logic (loops, conditionals...)
-def count_words(text):
+def find_words(text):
     # 1. Split the text into words
     allowed_symbols = ["_", "-", "+", "/"]
     # List that will hold all words
@@ -62,15 +67,7 @@ def count_words(text):
     # 2. Handle last word
     if word != "":
         words.append(word)
-
-    # Count ocurrences
-    word_count = {}
-    for w in words:
-        if w in word_count:
-            word_count[w] += 1
-        else:
-            word_count[w] = 1
-    return word_count
+    return words
 
 
 def sum_dicts(d1, d2):
